@@ -23,7 +23,7 @@ jobs:
       - name: Set up spack repositories
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          spack repo add $(pwd)
+          spack repo add spack_repo/macaulay2
           cd $(spack location --repo builtin)
           git checkout develop
           git fetch origin
