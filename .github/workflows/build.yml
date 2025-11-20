@@ -30,4 +30,4 @@ jobs:
       - name: Install Macaulay2
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          install --verbose macaulay2
+          spack install --verbose macaulay2
