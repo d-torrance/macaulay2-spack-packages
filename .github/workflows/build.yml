@@ -27,11 +27,6 @@ jobs:
           cd $(spack location --repo builtin)
           git fetch origin develop
           git checkout origin/develop
-      - name: Set up build cache
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          spack mirror add develop https://binaries.spack.io/develop
-          spack buildcache keys --install --trust
       - name: Install Macaulay2
         run: |
           . /opt/spack/share/spack/setup-env.sh
