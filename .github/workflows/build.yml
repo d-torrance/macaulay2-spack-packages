@@ -20,10 +20,9 @@ jobs:
           - ubuntu-noble
     steps:
       - uses: actions/checkout@v5
-      - name: Initialize spack
-        run: echo ". /opt/spack/share/spack/setup-env.sh" >> $BASH_ENV
       - name: Set up spack repositories
         run: |
+          . /opt/spack/share/spack/setup-env.sh
           spack repo add $(pwd)
           cd $(spack location --repo builtin)
           git checkout develop
@@ -31,4 +30,6 @@ jobs:
           git merge origin/develop
           spack repo
       - name: Install Macaulay2
-        run: spack install --verbose macaulay2
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          install --verbose macaulay2
