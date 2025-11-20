@@ -20,6 +20,8 @@ jobs:
           - ubuntu-noble
     steps:
       - uses: actions/checkout@v5
+      - name: Initialize spack
+        run: echo ". /opt/spack/share/spack/setup-env.sh" >> $BASH_ENV
       - name: Set up spack repositories
         run: |
           spack repo add $(pwd)
