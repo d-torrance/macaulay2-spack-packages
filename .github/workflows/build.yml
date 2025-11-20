@@ -1,0 +1,32 @@
+name: Build spack package
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 2"
+
+jobs:
+  spack:
+    runs-on: ubuntu-latest
+    container:
+      image: spack/${{ matrix.distribution }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution:
+          - almalinux8
+          - almalinux9
+          - ubuntu-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up spack repositories
+        run: |
+          spack repo add $(pwd)
+          cd $(spack location --repo builtin)
+          git checkout develop
+          git fetch origin
+          git merge origin/develop
+          spack repo
+      - name: Install Macaulay2
+        run: spack install --verbose macaulay2
