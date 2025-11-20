@@ -20,6 +20,11 @@ jobs:
           - ubuntu-noble
     steps:
       - uses: actions/checkout@v5
+      - name: Set up build cache
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          spack mirror add develop https://binaries.spack.io/develop
+          spack buildcache keys --install --trust
       - name: Set up spack repositories
         run: |
           . /opt/spack/share/spack/setup-env.sh
