@@ -40,6 +40,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("flint")
     depends_on("fplll")
     depends_on("frobby")
+    depends_on("gdbm")
     depends_on("givaro")
     depends_on("glpk")
     depends_on("gmp")
