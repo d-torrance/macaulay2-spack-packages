@@ -25,10 +25,8 @@ jobs:
           . /opt/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2
           cd $(spack location --repo builtin)
-          git checkout develop
           git fetch origin
-          git merge origin/develop
-          spack repo
+          git checkout origin/develop
       - name: Install Macaulay2
         run: |
           . /opt/spack/share/spack/setup-env.sh
