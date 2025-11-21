@@ -27,7 +27,7 @@ class Gfan(MakefilePackage):
 
     # avoid depending on C++-20
     patch(
-        "https://src.fedoraproject.org/rpms/gfan/raw/21c77ad/f/gfan-c++20",
+        "https://src.fedoraproject.org/rpms/gfan/raw/21c77ad/f/gfan-c++20.patch",
         sha256="1ae5634de5cbd3414726cce4891cc353d502018fb8226bfdd9eee05c458e196e"
     )
 
