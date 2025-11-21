@@ -62,6 +62,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("bison", type="build")
     depends_on("diffutils", type="build")
     depends_on("flex", type="build")
+    depends_on("pkgconfig", type="build")
 
     # programs
     depends_on("4ti2", type=("build", "run")) # PR: #1690 (new package)
