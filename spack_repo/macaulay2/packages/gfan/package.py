@@ -12,23 +12,23 @@ class Gfan(MakefilePackage):
     hypersurfaces, and related structures in tropical geometry."""
 
     homepage = "https://users-math.au.dk/jensen/software/gfan/gfan.html"
-    url = "https://users-math.au.dk/jensen/software/gfan/gfan0.7.tar.gz"
+    url = "https://users-math.au.dk/jensen/software/gfan/gfan0.6.2.tar.gz"
 
     maintainers("d-torrance")
 
     license("GPL-2.0-or-later", checked_by="d-torrance")
 
-    version("0.7", sha256="ab833757e1e4d4a98662f4aa691394013ea9a226f6416b8f8565356d6fcc989e")
+    version("0.6.2", sha256="a674d5e5dc43634397de0d55dd5da3c32bd358d05f72b73a50e62c1a1686f10a")
 
     depends_on("cxx", type="build")
 
     depends_on("cddlib+gmp")
     depends_on("gmp")
 
-    # avoid depending on C++-20
     patch(
-        "https://src.fedoraproject.org/rpms/gfan/raw/21c77ad/f/gfan-c++20.patch",
-        sha256="1ae5634de5cbd3414726cce4891cc353d502018fb8226bfdd9eee05c458e196e"
+        "https://raw.githubusercontent.com/Macaulay2/M2/aa0a8e3/M2/libraries/gfan/patch-0.6.2",
+        sha256="52eb59458f14644c00fa3281a2d1cf26143a31dab32293a5c69f222ffce6c3b1",
+        when="@0.6.2"
     )
 
     def flag_handler(self, name: str, flags: List[str]):
