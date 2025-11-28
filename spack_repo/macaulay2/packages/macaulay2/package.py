@@ -51,7 +51,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("memtailor")
     depends_on("mpfi")
     depends_on("mpfr")
-    depends_on("mpsolve") # PR: #2418 (new package)
+    depends_on("mpsolve")
     depends_on("ncurses")
     depends_on("normaliz") # PR: #1610 (new package)
     depends_on("ntl")
