@@ -46,7 +46,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("gmp")
     depends_on("googletest")
     depends_on("lapack")
-    depends_on("mathic") # PR: #2417 (new package)
+    depends_on("mathic")
     depends_on("mathicgb") # waiting for mathic
     depends_on("memtailor")
     depends_on("mpfi")
