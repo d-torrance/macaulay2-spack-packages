@@ -16,13 +16,13 @@ class Msolve(AutotoolsPackage):
     related tools for polynomial system solving."""
 
     homepage = "https://msolve.lip6.fr/"
-    url = "https://msolve.lip6.fr/downloads/v0.9.1/msolve-0.9.1.tar.gz"
+    url = "https://github.com/algebraic-solving/msolve/archive/refs/tags/v0.9.3.tar.gz"
 
     maintainers("d-torrance")
 
     license("GPL-2.0-or-later", checked_by="d-torrance")
 
-    version("0.9.1", sha256="95684fac8ebbd6ab4e35c4cfcf5ec65ed8e047aea7d34dc3f0b0babb6dd36684")
+    version("0.9.3", sha256="2e46b88b38abbe4e4937ef5fc4a90a006d1ff933ffa7563287b5d756de3bcf6e")
 
     depends_on("autoconf", type="build")
     depends_on("automake", type="build")
