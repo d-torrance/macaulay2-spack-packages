@@ -35,7 +35,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("boost+regex")
     depends_on("cddlib") # PR: #1599 (add GMP variant for gfan)
     depends_on("eigen")
-    depends_on("singular-factory")
+    depends_on("singular-factory") # PR: #2601 (patch for flint >= 3.3.0)
     depends_on("fflas-ffpack")
     depends_on("flint")
     depends_on("fplll")
