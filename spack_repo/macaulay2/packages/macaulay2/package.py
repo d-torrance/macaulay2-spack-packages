@@ -53,7 +53,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("mpfr")
     depends_on("mpsolve")
     depends_on("ncurses")
-    depends_on("normaliz") # PR: #1610 (new package)
+    depends_on("normaliz")
     depends_on("ntl")
     depends_on("python", type=("build", "link", "run"))
     depends_on("tbb")
