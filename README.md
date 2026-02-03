@@ -12,7 +12,7 @@ First, set up the Macaulay2 repo:
 spack repo add https://github.com/d-torrance/macaulay2-spack-packages
 ```
 
-Some of Macaulay2's dependencies are available in the builtin repository, but at the moment (February 2026), they are in the `develop` branch of the repository and not the most recent stable release.  Add the following to `~/.spack/repo.yaml`:
+Some of Macaulay2's dependencies are available in the builtin repository, but at the moment (February 2026), they are in the `develop` branch of the repository and not the most recent stable release.  Add the following to `~/.spack/repos.yaml`:
 
 ```yaml
 repos:
