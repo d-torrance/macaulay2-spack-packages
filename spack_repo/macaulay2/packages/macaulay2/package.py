@@ -65,7 +65,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("pkgconfig", type="build")
 
     # programs
-    depends_on("4ti2", type=("build", "run")) # PR: #1690 (new package)
+    depends_on("4ti2", type=("build", "run"))
     depends_on("cohomcalg", type=("build", "run"))
     depends_on("csdp", type=("build", "run"))
     depends_on("gfan", type=("build", "run")) # waiting for cddlib
