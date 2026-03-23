@@ -69,7 +69,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("cohomcalg", type=("build", "run"))
     depends_on("csdp", type=("build", "run"))
     depends_on("gfan", type=("build", "run")) # waiting for cddlib
-    depends_on("lrslib", type=("build", "run")) # PR: #1605 (new version, fixes)
+    depends_on("lrslib", type=("build", "run"))
     depends_on("msolve", type=("build", "run"))
     depends_on("nauty", type=("build", "run")) # PR: #1465 (fixes build)
     depends_on("topcom", type=("build", "run"))
