@@ -33,7 +33,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("bdw-gc threads=posix +cxx")
     depends_on("blas")
     depends_on("boost+regex")
-    depends_on("cddlib") # PR: #1599 (add GMP variant for gfan)
+    depends_on("cddlib")
     depends_on("eigen")
     depends_on("singular-factory")
     depends_on("fflas-ffpack")
