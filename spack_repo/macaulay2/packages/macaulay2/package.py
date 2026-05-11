@@ -22,6 +22,7 @@ class Macaulay2(AutotoolsPackage):
 
     license("GPL-2.0-or-later", checked_by="d-torrance")
 
+    version("1.26.05", sha256="a76213b4a23542abe5742a4d2b782e26ee5f3f9b1f6a2fc3a992615cc3aa3431")
     version("1.25.11", sha256="ecee06ea456f87d8182bdaf59f9e2f4a330d861516ab7d00faf9f37699ddeb58")
 
     # compilers
@@ -45,6 +46,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("glpk")
     depends_on("gmp")
     depends_on("googletest")
+    depends_on("jansson", when="@1.26.05:")
     depends_on("lapack")
     depends_on("mathic")
     depends_on("mathicgb")
