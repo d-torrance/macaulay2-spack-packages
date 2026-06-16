@@ -78,6 +78,13 @@ class Macaulay2(AutotoolsPackage):
     depends_on("topcom", type=("build", "run"))
     depends_on("which", type=("build", "run")) # for 4ti2
 
+    # drop minimum version of gfan (0.8 can't be built w/ older compilers)
+    patch(
+        "https://salsa.debian.org/math-team/macaulay2/-/raw/debian/trixie/debian/patches/allow-older-gfan.patch",
+        sha256="6f8ebcdac90f1a3e16c72ecce91b238cc5140198f5c42a4d711e0b9dc5750e16",
+        when="@1.26.06",
+    )
+
     configure_directory = "M2"
 
     def configure_args(self) -> List[str]:
