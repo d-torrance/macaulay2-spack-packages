@@ -16,6 +16,7 @@ jobs:
         distribution:
           - almalinux8
           - almalinux9
+          - ubuntu-jammy
 #          - ubuntu-noble (skip until https://github.com/Macaulay2/M2/issues/4074 fixed)
     steps:
       - uses: actions/checkout@v5
