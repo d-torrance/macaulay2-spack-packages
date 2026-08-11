@@ -90,4 +90,5 @@ class Macaulay2(AutotoolsPackage):
             "--enable-documentation=download",
             f"--with-boost-libdir={self.spec['boost'].prefix.lib}",
             f"CPPFLAGS=-I{self.spec['cddlib'].prefix.include}/cddlib",
+            f"F77={spack_f77}",
         ]
