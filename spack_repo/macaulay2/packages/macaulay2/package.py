@@ -84,6 +84,20 @@ class Macaulay2(AutotoolsPackage):
     configure_directory = "M2"
 
     def configure_args(self) -> List[str]:
+        # AC_FC_LIBRARY_LDFLAGS and AC_F77_LIBRARY_LDFLAGS determine F{,C}LIBS
+        # by linking a test program with the Fortran compiler and -v, then
+        # scraping the verbose output for -L and -l options.  Spack's compiler
+        # wrapper treats any -v as a version check and passes the command
+        # through without adding search paths, so that link cannot find the
+        # libraries configure has already accumulated in LIBS and the linker
+        # complains about each one.  Since binutils 2.38 (Ubuntu 22.04 and
+        # later) those complaints read "cannot find -lfoo: No such file or
+        # directory", so the scraped options end in a colon; autoconf does not
+        # recognize them as duplicates of the real ones and appends them to
+        # F{,C}LIBS, breaking every subsequent link.  Set the variables
+        # ourselves to skip the probe.
+        flibs = "-lgfortran -lm -lquadmath"
+
         return [
             "--with-system-libs",
             "--with-fplll",
@@ -91,4 +105,6 @@ class Macaulay2(AutotoolsPackage):
             f"--with-boost-libdir={self.spec['boost'].prefix.lib}",
             f"CPPFLAGS=-I{self.spec['cddlib'].prefix.include}/cddlib",
             f"F77={spack_f77}",
+            f"FLIBS={flibs}",
+            f"FCLIBS={flibs}",
         ]
