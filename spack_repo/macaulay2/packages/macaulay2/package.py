@@ -66,6 +66,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("diffutils", type="build")
     depends_on("flex", type="build")
     depends_on("pkgconfig", type="build")
+    depends_on("texinfo", type="build")
 
     # programs
     depends_on("4ti2", type=("build", "run"))
