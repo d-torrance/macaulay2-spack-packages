@@ -74,7 +74,7 @@ class Macaulay2(AutotoolsPackage):
     depends_on("gfan", type=("build", "run"))
     depends_on("lrslib", type=("build", "run"))
     depends_on("msolve", type=("build", "run"))
-    depends_on("nauty", type=("build", "run")) # PR: #1465 (fixes build)
+    depends_on("nauty", type=("build", "run"))
     depends_on("topcom", type=("build", "run"))
     depends_on("which", type=("build", "run")) # for 4ti2
 
