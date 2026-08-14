@@ -172,8 +172,27 @@ jobs:
           . /opt/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2_ci
 
-      # Dependencies come from the cache the deps job pushed; Macaulay2 itself
-      # is always built from source.
+      # Dependencies should all come from the cache the deps job pushed.  Try
+      # that first and say so loudly if it didn't work: the failure is
+      # otherwise invisible -- everything is quietly rebuilt from source and the
+      # job still passes, just hours later.
+      - name: Install dependencies from the build cache
+        id: cache
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          label="${{ matrix.platform.distribution }} ${{ matrix.platform.target }} / ${{ matrix.spec }}"
+          if spack install --only dependencies --use-buildcache dependencies:only ${{ matrix.spec }}
+          then
+            echo ":white_check_mark: **$label** -- all dependencies came from the build cache." \
+                >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Build cache miss::$label: dependencies were not all in the build cache and are being rebuilt from source. The deps job and this job concretized differently -- check the spack-packages pin and the target pin."
+            echo ":warning: **$label** -- build cache miss, rebuilding dependencies from source." \
+                >> "$GITHUB_STEP_SUMMARY"
+            spack install --verbose --only dependencies ${{ matrix.spec }}
+          fi
+
+      # Macaulay2 itself is always built from source.
       - name: Install Macaulay2
         run: |
           . /opt/spack/share/spack/setup-env.sh
