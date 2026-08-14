@@ -1,33 +1,264 @@
 name: Build spack package
+
 on:
   pull_request:
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 2"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MIRROR: oci://ghcr.io/${{ github.repository_owner }}/macaulay2-spack-cache
+
 jobs:
-  spack:
+  # Every job below must concretize to the same dependency hashes or the build
+  # cache is useless, so resolve the moving develop branch to one commit here
+  # and have everyone check out exactly that.
+  pin:
+    name: Pin spack-packages
     runs-on: ubuntu-latest
+    outputs:
+      builtin: ${{ steps.pin.outputs.sha }}
+    steps:
+      - id: pin
+        run: |
+          sha=$(git ls-remote https://github.com/spack/spack-packages develop | cut -f1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "spack-packages develop is $sha" >> "$GITHUB_STEP_SUMMARY"
+
+  # Build Macaulay2's dependencies once per distribution and push them to the
+  # build cache, so the two jobs below share them.  The cache persists between
+  # runs, so a later run only rebuilds what actually changed -- and a
+  # dependency getting rebuilt is itself a signal worth noticing.
+  deps:
+    name: deps / ${{ matrix.platform.distribution }} ${{ matrix.platform.target }}
+    needs: pin
+    runs-on: ${{ matrix.platform.runner }}
     container:
-      image: spack/${{ matrix.distribution }}
+      image: spack/${{ matrix.platform.distribution }}
+    permissions:
+      packages: write
+    env:
+      GHCR_USER: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
-        distribution:
-          - almalinux8
-          - almalinux9
-          - ubuntu-jammy
-#          - ubuntu-noble (skip until https://github.com/Macaulay2/M2/issues/4074 fixed)
+        platform:
+          - {distribution: almalinux8,   runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: almalinux9,   runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: ubuntu-jammy, runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: ubuntu-noble, runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: fedora40,     runner: ubuntu-latest,    target: x86_64_v3}
+          # Same distribution and compiler as the x86_64 noble entry above, so
+          # that a failure here points at the architecture and nothing else.
+          - {distribution: ubuntu-noble, runner: ubuntu-24.04-arm, target: aarch64}
     steps:
       - uses: actions/checkout@v5
-      - name: Set up spack repositories
+
+      - name: Set up spack
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          spack repo add spack_repo/macaulay2
-          cd $(spack location --repo builtin)
-          git fetch origin develop
-          git checkout origin/develop
+          # TODO: drop the builtin checkout once macaulay2 and its dependencies
+          # appear in a tagged spack-packages release; then we'd be testing what
+          # an ordinary user actually gets.
+          cd "$(spack location --repo builtin)"
+          git fetch --depth 1 origin ${{ needs.pin.outputs.builtin }}
+          git checkout ${{ needs.pin.outputs.builtin }}
+          cd "$GITHUB_WORKSPACE"
+          spack repo add spack_repo/macaulay2_ci
+          spack mirror add --unsigned \
+              --oci-username-variable GHCR_USER \
+              --oci-password-variable GHCR_TOKEN cache "$MIRROR"
+          # GitHub's runners are a mix of Intel and AMD, and spack would
+          # otherwise concretize target= to whatever CPU it landed on -- so the
+          # deps job and the build jobs could disagree and silently miss the
+          # cache.  Both tiers must set this to the same thing.
+          spack config add "packages:all:target:[${{ matrix.platform.target }}]"
+
+      - name: Install dependencies
+        # macaulay2@develop's dependencies are a superset of the release's: it
+        # adds autoconf, automake and libtool and nothing else.  So one build
+        # serves both specs.
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          spack install --verbose --only dependencies macaulay2@develop
+
+      - name: Push to build cache
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          spack buildcache push --unsigned cache $(spack find --format '/{hash}')
+          spack buildcache update-index cache
+
+      - name: Collect build logs
+        if: failure()
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          mkdir -p build-logs
+          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
+          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-deps-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}
+          path: build-logs
+          if-no-files-found: ignore
+
+  macaulay2:
+    name: ${{ matrix.platform.distribution }} ${{ matrix.platform.target }} / ${{ matrix.spec }}
+    needs: [pin, deps]
+    # A matrix job counts as failed if any single leg fails, so without this one
+    # distribution's dependency build going wrong would skip every build below
+    # -- including the platforms whose dependencies were fine.  Only a missing
+    # pin is genuinely fatal here; if this platform's dependencies aren't in the
+    # cache, the build just rebuilds them from source.
+    if: ${{ !cancelled() && needs.pin.result == 'success' }}
+    runs-on: ${{ matrix.platform.runner }}
+    container:
+      image: spack/${{ matrix.platform.distribution }}
+    permissions:
+      packages: read
+    env:
+      GHCR_USER: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - {distribution: almalinux8,   runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: almalinux9,   runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: ubuntu-jammy, runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: ubuntu-noble, runner: ubuntu-latest,    target: x86_64_v3}
+          - {distribution: fedora40,     runner: ubuntu-latest,    target: x86_64_v3}
+          # Same distribution and compiler as the x86_64 noble entry above, so
+          # that a failure here points at the architecture and nothing else.
+          - {distribution: ubuntu-noble, runner: ubuntu-24.04-arm, target: aarch64}
+        spec:
+          # The release build takes builtin's --enable-documentation=download,
+          # so it generates no examples; the development build has no docs to
+          # download and so builds them, which runs every example in every
+          # package.  That's where most functional problems turn up.
+          - macaulay2@1.26.06
+          - macaulay2@develop
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up spack
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          cd "$(spack location --repo builtin)"
+          git fetch --depth 1 origin ${{ needs.pin.outputs.builtin }}
+          git checkout ${{ needs.pin.outputs.builtin }}
+          cd "$GITHUB_WORKSPACE"
+          spack mirror add --unsigned \
+              --oci-username-variable GHCR_USER \
+              --oci-password-variable GHCR_TOKEN cache "$MIRROR"
+          # GitHub's runners are a mix of Intel and AMD, and spack would
+          # otherwise concretize target= to whatever CPU it landed on -- so the
+          # deps job and the build jobs could disagree and silently miss the
+          # cache.  Both tiers must set this to the same thing.
+          spack config add "packages:all:target:[${{ matrix.platform.target }}]"
+
+      - name: Add overlay repo
+        if: contains(matrix.spec, 'develop')
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          spack repo add spack_repo/macaulay2_ci
+
+      # Dependencies come from the cache the deps job pushed; Macaulay2 itself
+      # is always built from source.
       - name: Install Macaulay2
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          spack install --verbose macaulay2
+          spack install --verbose --use-buildcache package:never ${{ matrix.spec }}
+
+      - name: Run Macaulay2
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          spack load ${{ matrix.spec }}
+          M2 --version
+          M2 --script smoke-test.m2
+
+      - name: Collect build logs
+        if: failure()
+        run: |
+          . /opt/spack/share/spack/setup-env.sh
+          mkdir -p build-logs
+          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
+          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}-${{ matrix.spec }}
+          path: build-logs
+          if-no-files-found: ignore
+
+  # Experimental, hence continue-on-error: there's no spack container image for
+  # macOS, and a mixed apple-clang/gfortran toolchain is new territory for these
+  # packages.  Self-contained, so it doesn't share the build cache.
+  macos:
+    name: macos / ${{ matrix.spec }}
+    runs-on: macos-latest
+    continue-on-error: true
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        spec:
+          - macaulay2@1.26.06
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install gfortran
+        run: brew install gcc
+
+      - name: Install spack
+        run: |
+          git clone --depth 1 https://github.com/spack/spack.git ~/spack
+          . ~/spack/share/spack/setup-env.sh
+          spack compiler find
+          spack external find --all
+
+      - name: Add overlay repo
+        if: contains(matrix.spec, 'develop')
+        run: |
+          . ~/spack/share/spack/setup-env.sh
+          spack repo add spack_repo/macaulay2_ci
+
+      - name: Install Macaulay2
+        run: |
+          . ~/spack/share/spack/setup-env.sh
+          spack install --verbose --only dependencies ${{ matrix.spec }}
+          spack install --verbose ${{ matrix.spec }}
+
+      - name: Run Macaulay2
+        run: |
+          . ~/spack/share/spack/setup-env.sh
+          spack load ${{ matrix.spec }}
+          M2 --version
+          M2 --script smoke-test.m2
+
+      - name: Collect build logs
+        if: failure()
+        run: |
+          . ~/spack/share/spack/setup-env.sh
+          mkdir -p build-logs
+          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
+          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-macos-${{ matrix.spec }}
+          path: build-logs
+          if-no-files-found: ignore
