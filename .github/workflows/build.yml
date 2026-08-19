@@ -98,9 +98,15 @@ jobs:
           spack install --verbose flex
 
       - name: Push to build cache
+        # push walks each spec's build dependencies as well, but once the cache
+        # is warm those were never installed here -- their dependents came down
+        # as binaries instead of being built -- and pushing a spec that isn't
+        # installed is an error.  Everything that *is* installed is named
+        # explicitly below, so the walk has nothing to add.
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          spack buildcache push --unsigned cache $(spack find --format '/{hash}')
+          spack buildcache push --unsigned --without-build-dependencies cache \
+              $(spack find --format '/{hash}')
           spack buildcache update-index cache
 
       - name: Collect build logs
