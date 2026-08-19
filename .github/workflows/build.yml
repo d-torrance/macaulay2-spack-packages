@@ -84,9 +84,18 @@ jobs:
         # macaulay2@develop's dependencies are a superset of the release's: it
         # adds autoconf, automake and libtool and nothing else.  So one build
         # serves both specs.
+        #
+        # flex needs naming separately.  Once a mirror is configured, spack only
+        # schedules a package's build dependencies when it actually misses the
+        # cache, and --only dependencies prunes the root -- so macaulay2's own
+        # build-only dependencies never get built here.  The rest of them
+        # (autoconf, bison, texinfo, ...) arrive anyway as build dependencies of
+        # something else in the graph; flex is the one nothing else wants, so
+        # without this every job below would rebuild it from source.
         run: |
           . /opt/spack/share/spack/setup-env.sh
           spack install --verbose --only dependencies macaulay2@develop
+          spack install --verbose flex
 
       - name: Push to build cache
         run: |
