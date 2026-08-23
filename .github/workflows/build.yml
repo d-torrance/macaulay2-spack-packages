@@ -181,8 +181,12 @@ jobs:
           # cache.  Both tiers must set this to the same thing.
           spack config add "packages:all:target:[${{ matrix.platform.target }}]"
 
+      # Normally only @develop needs the overlay -- it is where the version
+      # lives -- but the overlay also drops -lquadmath from FLIBS/FCLIBS, which
+      # the release build needs on aarch64 too.  Add it everywhere until that
+      # fix lands in builtin, then restore the
+      # `if: contains(matrix.spec, 'develop')` guard.
       - name: Add overlay repo
-        if: contains(matrix.spec, 'develop')
         run: |
           . /opt/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2_ci
@@ -262,8 +266,12 @@ jobs:
           spack compiler find
           spack external find --all
 
+      # Normally only @develop needs the overlay -- it is where the version
+      # lives -- but the overlay also drops -lquadmath from FLIBS/FCLIBS, which
+      # the release build needs on aarch64 too.  Add it everywhere until that
+      # fix lands in builtin, then restore the
+      # `if: contains(matrix.spec, 'develop')` guard.
       - name: Add overlay repo
-        if: contains(matrix.spec, 'develop')
         run: |
           . ~/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2_ci
