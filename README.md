@@ -16,17 +16,11 @@ Macaulay2 spack builds
 
 ## Installing Macaulay2
 
-Install [Macaulay2](https://macaulay2.com) using [spack](https://spack.io/)
-with:
-
-```
-spack install --verbose macaulay2
-```
-
-Some of Macaulay2's dependencies are available in the builtin repository, but
-at the moment (August 2026), they are in the `develop` branch of the repository
-and not the most recent stable release.  Until then, add the following to
-`~/.spack/repos.yaml`:
+The `macaulay2` package landed in the builtin repository in August 2026, which
+is after `spack-packages`' most recent tagged release (`v2026.06.0`, June
+2026); several of Macaulay2's dependencies have picked up build fixes since
+then as well.  So until the next release, point the builtin repo at its
+`develop` branch by adding the following to `~/.spack/repos.yaml`:
 
 ```yaml
 repos:
@@ -34,7 +28,12 @@ repos:
     branch: develop
 ```
 
-and run `spack repo update`.
+and running `spack repo update`.  Then install
+[Macaulay2](https://macaulay2.com) using [spack](https://spack.io/) with:
+
+```
+spack install --verbose macaulay2
+```
 
 ## Running Macaulay2
 
@@ -58,18 +57,19 @@ Rather than duplicating that documentation here, we recommend consulting the Spa
 ## What this repo is for now
 
 It exists to make sure the spack *builds* keep working.  Every Tuesday (and on
-demand), [the workflow](.github/workflows/build.yml) installs the builtin
-`macaulay2` package from scratch on AlmaLinux 8 and 9, Ubuntu Jammy and Noble,
-and Fedora 40 — spanning gcc 8 through 14 — plus Ubuntu Noble on `aarch64` and,
-experimentally, macOS.  It then runs [`smoke-test.m2`](smoke-test.m2) to
-check that the resulting Macaulay2 can actually find and run the external
-programs spack installed with it.  The development build also generates the
-documentation, which runs every example in every package.  A failure here means
-there's a bug to fix in spack or in Macaulay2, not in this repo.
+demand), [the workflow](.github/workflows/build.yml) installs Macaulay2 from
+scratch on AlmaLinux 8 and 9, Ubuntu Jammy and Noble, and Fedora 40 — spanning
+gcc 8 through 14 — plus Ubuntu Noble on `aarch64` and, experimentally, macOS.
+It then runs [`smoke-test.m2`](smoke-test.m2) to check that the resulting
+Macaulay2 can actually find and run the external programs spack installed with
+it.  The development build also generates the documentation, which runs every
+example in every package.  A failure here means there's a bug to fix in spack
+or in Macaulay2, not in this repo.
 
-Macaulay2's dependencies are built once per distribution and shared with the
-release and development builds through a build cache on `ghcr.io`, so a run only
-rebuilds what actually changed.
+On Linux, Macaulay2's dependencies are built once per distribution and shared
+with the release and development builds through a build cache on `ghcr.io`, so
+a run only rebuilds what actually changed.  The macOS job is self-contained and
+builds everything itself.
 
 That build cache is CI scaffolding, not a place to get binaries.  It is
 unsigned, it holds only Macaulay2's dependencies and not Macaulay2 itself, and
@@ -78,8 +78,9 @@ compiler, and one microarchitecture — so anything else gets no cache hits at
 all.  For prebuilt binaries, use [spack's own signed build
 cache](https://spack.readthedocs.io/en/latest/binary_caches.html) instead.
 
-Both the latest release and Macaulay2's `development` branch are built.  The
-builtin package has no `develop` version, so the one package recipe left here,
+Each Linux job builds both the latest release and Macaulay2's `development`
+branch; the macOS job builds the release only.  The builtin package has no
+`develop` version, so the one package recipe left here,
 [`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), is a small overlay that
 subclasses the builtin one and adds it.  Once that lands upstream, this repo
 will contain nothing but CI.
