@@ -52,6 +52,29 @@ class Macaulay2(BuiltinMacaulay2):
 
     def configure_args(self):
         args = super().configure_args()
+
+        # builtin sets FLIBS/FCLIBS = "-lgfortran -lm -lquadmath" to work
+        # around Macaulay2/M2#4074.  All that value has to do is (1) be
+        # nonempty, so autoconf takes its "let the user override the test"
+        # path and skips the AC_FC_LIBRARY_LDFLAGS probe that spack's compiler
+        # wrapper breaks, and (2) name the Fortran runtime, for the static
+        # librefblas.a/liblapack.a that BUILD_lapack=yes produces.  -lquadmath
+        # was only along for the ride: it is what gfortran's link spec emits
+        # on x86, so it showed up in the probe output that value was copied
+        # from.  There is no libquadmath on aarch64 -- long double is already
+        # IEEE binary128 there, so gcc doesn't build one -- and the
+        # AC_F77_DUMMY_MAIN probe dies with "linking to Fortran libraries from
+        # C fails".  Nothing in refblas/lapack uses REAL(16), and M2 finds
+        # libquadmath for boost-math by itself with
+        # AC_SEARCH_LIBS([ldexpq], [quadmath]), so dropping it is safe
+        # everywhere.  Upstream fix pending; this override goes away with it.
+        args = [
+            arg.replace(" -lquadmath", "")
+            if arg.startswith(("FLIBS=", "FCLIBS="))
+            else arg
+            for arg in args
+        ]
+
         if self.spec.satisfies("@develop"):
             # builtin passes --enable-documentation=download, which fetches
             # Macaulay2-docs-$(PACKAGE_VERSION).tar.gz.  That tarball is only
