@@ -111,19 +111,9 @@ jobs:
 
       - name: Collect build logs
         if: failure()
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          mkdir -p build-logs
-          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
-          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
-          done
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
+        uses: ./.github/actions/collect-build-logs
         with:
           name: build-logs-deps-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}
-          path: build-logs
-          if-no-files-found: ignore
 
   macaulay2:
     name: ${{ matrix.platform.distribution }} ${{ matrix.platform.target }} / ${{ matrix.spec }}
@@ -227,19 +217,9 @@ jobs:
 
       - name: Collect build logs
         if: failure()
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          mkdir -p build-logs
-          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
-          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
-          done
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
+        uses: ./.github/actions/collect-build-logs
         with:
           name: build-logs-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}-${{ matrix.spec }}
-          path: build-logs
-          if-no-files-found: ignore
 
   # Experimental, hence continue-on-error: there's no spack container image for
   # macOS, and a mixed apple-clang/gfortran toolchain is new territory for these
@@ -290,16 +270,7 @@ jobs:
 
       - name: Collect build logs
         if: failure()
-        run: |
-          . ~/spack/share/spack/setup-env.sh
-          mkdir -p build-logs
-          find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
-          do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
-          done
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
+        uses: ./.github/actions/collect-build-logs
         with:
           name: build-logs-macos-${{ matrix.spec }}
-          path: build-logs
-          if-no-files-found: ignore
+          setup-env: $HOME/spack/share/spack/setup-env.sh
