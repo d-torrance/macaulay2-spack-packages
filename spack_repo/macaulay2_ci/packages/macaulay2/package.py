@@ -31,19 +31,21 @@ class Macaulay2(BuiltinMacaulay2):
     variant("doc", default=True, when="@develop",
             description="build the documentation (adds hours to the build)")
 
+    # Both the release and the development branch want gfan 0.8, which the
+    # overlay in ../gfan supplies until spack-packages#6090 merges.  This
+    # constraint is what selects it: 0.8beta is a prerelease, so a bare `gfan`
+    # concretizes to builtin's 0.6.2 instead, and 0.6.2 doesn't build on macOS
+    # at all.  ("@1.26.06:" covers develop too -- spack sorts branch versions
+    # above numeric ones.)  It also keeps the two tiers in step: the deps job
+    # adds this repo unconditionally, so if a build job didn't, the two would
+    # concretize gfan differently and miss the build cache.
+    depends_on("gfan@0.8beta:", type=("build", "run"), when="@1.26.06:")
+
     with when("@develop"):
         # a git checkout has no generated M2/configure
         depends_on("autoconf", type="build")
         depends_on("automake", type="build")
         depends_on("libtool", type="build")
-
-        # M2's development branch requires gfan 0.8, which spack doesn't have
-        # yet (spack-packages#6090 adds 0.8beta).  Until then, drop the minimum
-        # version as builtin does for @1.26.06 -- but builtin's patch edits the
-        # generated M2/configure, which doesn't exist in a git checkout, so
-        # patch M2/configure.ac instead.  This goes away by itself once gfan
-        # 0.8beta is available.
-        patch("allow-older-gfan-configure-ac.patch", when="^gfan@:0.7")
 
     def autoreconf(self, spec, prefix):
         if spec.satisfies("@develop"):

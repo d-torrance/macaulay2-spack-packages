@@ -79,8 +79,12 @@ all.  For prebuilt binaries, use [spack's own signed build
 cache](https://spack.readthedocs.io/en/latest/binary_caches.html) instead.
 
 Each Linux job builds both the latest release and Macaulay2's `development`
-branch; the macOS job builds the release only.  The builtin package has no
-`develop` version, so the one package recipe left here,
-[`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), is a small overlay that
-subclasses the builtin one and adds it.  Once that lands upstream, this repo
-will contain nothing but CI.
+branch; the macOS job builds the release only.  The package recipes left here,
+in [`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), are small overlays
+that subclass the builtin ones and add what CI needs ahead of upstream: a
+`develop` version of `macaulay2`, which builtin has no reason to carry, and a
+`gfan` that builds on macOS ([spack-packages#6090], still under review).  Each
+is meant to be deleted the moment upstream can do without it; once both are
+gone this repo will contain nothing but CI.
+
+[spack-packages#6090]: https://github.com/spack/spack-packages/pull/6090
