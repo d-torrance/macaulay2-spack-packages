@@ -59,17 +59,18 @@ Rather than duplicating that documentation here, we recommend consulting the Spa
 It exists to make sure the spack *builds* keep working.  Every Tuesday (and on
 demand), [the workflow](.github/workflows/build.yml) installs Macaulay2 from
 scratch on AlmaLinux 8 and 9, Ubuntu Jammy and Noble, and Fedora 40 — spanning
-gcc 8 through 14 — plus Ubuntu Noble on `aarch64` and, experimentally, macOS.
+gcc 8 through 14 — plus Ubuntu Noble on `aarch64` and macOS on Apple silicon.
 It then runs [`smoke-test.m2`](smoke-test.m2) to check that the resulting
 Macaulay2 can actually find and run the external programs spack installed with
 it.  The development build also generates the documentation, which runs every
 example in every package.  A failure here means there's a bug to fix in spack
 or in Macaulay2, not in this repo.
 
-On Linux, Macaulay2's dependencies are built once per distribution and shared
-with the release and development builds through a build cache on `ghcr.io`, so
-a run only rebuilds what actually changed.  The macOS job is self-contained and
-builds everything itself.
+Macaulay2's dependencies are built once per platform and shared with the
+release and development builds through a build cache on `ghcr.io`, so a run
+only rebuilds what actually changed.  macOS has a dependency tier of its own
+rather than joining the Linux one, since there's no spack container image for
+it and everything from the compiler on up has to be assembled by hand.
 
 That build cache is CI scaffolding, not a place to get binaries.  It is
 unsigned, it holds only Macaulay2's dependencies and not Macaulay2 itself, and
@@ -78,9 +79,8 @@ compiler, and one microarchitecture — so anything else gets no cache hits at
 all.  For prebuilt binaries, use [spack's own signed build
 cache](https://spack.readthedocs.io/en/latest/binary_caches.html) instead.
 
-Each Linux job builds both the latest release and Macaulay2's `development`
-branch; the macOS job builds the release only.  The package recipes left here,
-in [`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), are small overlays
+Every job builds both the latest release and Macaulay2's `development`
+branch.  The package recipes left here, in [`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), are small overlays
 that subclass the builtin ones and add what CI needs ahead of upstream: a
 `develop` version of `macaulay2`, which builtin has no reason to carry, and a
 `gfan` that builds on macOS ([spack-packages#6090], still under review).  Each

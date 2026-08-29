@@ -1,0 +1,49 @@
+name: Set up spack on macOS
+description: >
+  Install spack, pin spack-packages, and configure the build cache.  There is
+  no spack container image for macOS, so unlike the Linux jobs -- which inherit
+  an identical starting point from the image -- the macOS jobs have to build
+  one.  Both of them must reach exactly the same one or they concretize
+  differently and the build cache is useless, which is why this is a shared
+  action rather than two copies of the same steps.
+
+inputs:
+  builtin:
+    description: spack-packages commit to check out, from the pin job.
+    required: true
+  mirror:
+    description: OCI build cache URL.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Macaulay2 needs a Fortran compiler and macOS has none; this is what
+    # makes the toolchain a mixed apple-clang/gfortran one.
+    - name: Install gfortran
+      shell: bash
+      run: brew install gcc
+
+    - name: Install spack
+      shell: bash
+      run: |
+        git clone --depth 1 https://github.com/spack/spack.git "$HOME/spack"
+        . "$HOME/spack/share/spack/setup-env.sh"
+        # A fresh clone has no package repo yet -- `spack location` is what
+        # fetches spack-packages -- but once it exists it's an ordinary git
+        # checkout with an `origin`, so the same pin as the Linux jobs applies.
+        cd "$(spack location --repo builtin)"
+        git fetch --depth 1 origin ${{ inputs.builtin }}
+        git checkout ${{ inputs.builtin }}
+        cd "$GITHUB_WORKSPACE"
+        spack compiler find
+        spack external find --all
+        spack repo add spack_repo/macaulay2_ci
+        spack mirror add --unsigned \
+            --oci-username-variable GHCR_USER \
+            --oci-password-variable GHCR_TOKEN cache "${{ inputs.mirror }}"
+        # Same reasoning as the target pin on the Linux jobs, for a different
+        # reason: GitHub doesn't promise which Apple silicon a runner has, and
+        # spack would otherwise concretize target= to whatever it landed on.
+        # m1 is the baseline every later chip can run.
+        spack config add "packages:all:target:[m1]"
