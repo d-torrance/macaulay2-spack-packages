@@ -181,8 +181,13 @@ jobs:
           # cache.  Both tiers must set this to the same thing.
           spack config add "packages:all:target:[${{ matrix.platform.target }}]"
 
+      # Unconditional, and it has to stay that way: the deps job always adds
+      # this repo, so anything it changes about the dependency graph -- right
+      # now, gfan -- has to be visible here too or the two tiers concretize
+      # differently and every dependency gets rebuilt from source.  It's the
+      # release spec that needs saying: the overlay's only *version* is
+      # develop, so it used to look like release builds had no use for it.
       - name: Add overlay repo
-        if: contains(matrix.spec, 'develop')
         run: |
           . /opt/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2_ci
@@ -262,8 +267,10 @@ jobs:
           spack compiler find
           spack external find --all
 
+      # The overlay carries the gfan fix this job needs, so it has to be added
+      # for the release spec too -- gated on develop, it never ran here at all,
+      # since develop is the one spec this job doesn't build.
       - name: Add overlay repo
-        if: contains(matrix.spec, 'develop')
         run: |
           . ~/spack/share/spack/setup-env.sh
           spack repo add spack_repo/macaulay2_ci
