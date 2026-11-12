@@ -82,9 +82,14 @@ cache](https://spack.readthedocs.io/en/latest/binary_caches.html) instead.
 Every job builds both the latest release and Macaulay2's `development`
 branch.  The package recipes left here, in [`spack_repo/macaulay2_ci`](spack_repo/macaulay2_ci), are small overlays
 that subclass the builtin ones and add what CI needs ahead of upstream: a
-`develop` version of `macaulay2`, which builtin has no reason to carry, and a
-`gfan` that builds on macOS ([spack-packages#6090], still under review).  Each
-is meant to be deleted the moment upstream can do without it; once both are
-gone this repo will contain nothing but CI.
+`develop` version of `macaulay2`, which builtin has no reason to carry, plus
+fixes still under review upstream: a `gfan` that builds on macOS
+([spack-packages#6090]), an `intel-tbb` and a `which` that do too
+([spack-packages#7645], [spack-packages#7646]), and a `macaulay2` that links
+against a TBB-enabled `mathicgb` ([spack-packages#7643]).  Each is meant to be deleted the moment upstream can
+do without it; once they're all gone this repo will contain nothing but CI.
 
 [spack-packages#6090]: https://github.com/spack/spack-packages/pull/6090
+[spack-packages#7643]: https://github.com/spack/spack-packages/pull/7643
+[spack-packages#7645]: https://github.com/spack/spack-packages/pull/7645
+[spack-packages#7646]: https://github.com/spack/spack-packages/pull/7646
