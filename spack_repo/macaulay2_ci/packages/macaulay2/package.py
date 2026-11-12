@@ -54,6 +54,12 @@ class Macaulay2(BuiltinMacaulay2):
     depends_on("gmake@4:", type="build")
     depends_on("tar", type="build")
 
+    # Not yet upstream.  M2's configure requires OpenMP, which apple-clang
+    # only provides through `-Xpreprocessor -fopenmp -lomp` with libomp on the
+    # include and link paths -- and the compiler wrapper only adds those for
+    # direct dependencies.
+    depends_on("llvm-openmp", when="%apple-clang")
+
     with when("@develop"):
         # a git checkout has no generated M2/configure
         depends_on("autoconf", type="build")
