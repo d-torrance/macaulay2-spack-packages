@@ -47,6 +47,13 @@ class Macaulay2(BuiltinMacaulay2):
     # differently on the other side of the link.
     depends_on("mathicgb+tbb")
 
+    # Not yet upstream.  M2's configure rejects GNU make 3.81 and requires GNU
+    # tar.  macOS ships make 3.81 and bsdtar, and `spack external find`
+    # registers that make as gmake, so without a version spack uses it.
+    # (spack's tar is GNU tar and only detects GNU tar as an external.)
+    depends_on("gmake@4:", type="build")
+    depends_on("tar", type="build")
+
     with when("@develop"):
         # a git checkout has no generated M2/configure
         depends_on("autoconf", type="build")
