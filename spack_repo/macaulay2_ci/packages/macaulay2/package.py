@@ -17,9 +17,9 @@ def _emacs_submodule(package):
 class Macaulay2(BuiltinMacaulay2):
     """
     CI-only overlay of the builtin macaulay2 package, adding Macaulay2's
-    development branch.  Everything else is inherited from builtin; nothing is
-    duplicated here.  This whole repo goes away once the develop version is
-    upstreamed.
+    development branch and vendoring the pending upstream fixes noted below.
+    Everything else is inherited from builtin; nothing is duplicated here.
+    This whole repo goes away once the develop version is upstreamed.
     """
 
     git = "https://github.com/Macaulay2/M2.git"
@@ -40,6 +40,12 @@ class Macaulay2(BuiltinMacaulay2):
     # adds this repo unconditionally, so if a build job didn't, the two would
     # concretize gfan differently and miss the build cache.
     depends_on("gfan@0.8beta:", type=("build", "run"), when="@1.26.06:")
+
+    # Vendored from spack-packages#7643; delete once it merges.  M2 always
+    # builds with TBB, and its e/m2tbb.hpp includes mathicgb's mtbb.hpp with
+    # TBB on, so a mathicgb built without it defines the same mtbb classes
+    # differently on the other side of the link.
+    depends_on("mathicgb+tbb")
 
     with when("@develop"):
         # a git checkout has no generated M2/configure

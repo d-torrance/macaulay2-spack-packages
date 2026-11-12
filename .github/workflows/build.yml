@@ -173,10 +173,11 @@ jobs:
 
       # Unconditional, and it has to stay that way: the deps job always adds
       # this repo, so anything it changes about the dependency graph -- right
-      # now, gfan -- has to be visible here too or the two tiers concretize
-      # differently and every dependency gets rebuilt from source.  It's the
-      # release spec that needs saying: the overlay's only *version* is
-      # develop, so it used to look like release builds had no use for it.
+      # now, gfan, intel-tbb, which and mathicgb's tbb variant -- has to be
+      # visible here too or the two tiers concretize differently and every
+      # dependency gets rebuilt from source.  It's the release spec that needs
+      # saying: the overlay's only *version* is develop, so it used to look
+      # like release builds had no use for it.
       - name: Add overlay repo
         run: |
           . /opt/spack/share/spack/setup-env.sh
