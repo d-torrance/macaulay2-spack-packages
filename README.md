@@ -70,7 +70,9 @@ Macaulay2's dependencies are built once per platform and shared with the
 release and development builds through a build cache on `ghcr.io`, so a run
 only rebuilds what actually changed.  macOS has a dependency tier of its own
 rather than joining the Linux one, since there's no spack container image for
-it and everything from the compiler on up has to be assembled by hand.
+it and everything from the compiler on up has to be assembled by hand.  Every
+job, on both platforms, runs the latest spack release — what users run — with
+`spack-packages` pinned to one `develop` commit.
 
 That build cache is CI scaffolding, not a place to get binaries.  It is
 unsigned, it holds only Macaulay2's dependencies and not Macaulay2 itself, and

@@ -8,6 +8,11 @@ description: >
   action rather than two copies of the same steps.
 
 inputs:
+  spack:
+    description: >
+      spack release to install, from the pin job -- the same one the Linux
+      images are tagged with.
+    required: true
   builtin:
     description: spack-packages commit to check out, from the pin job.
     required: true
@@ -27,7 +32,8 @@ runs:
     - name: Install spack
       shell: bash
       run: |
-        git clone --depth 1 https://github.com/spack/spack.git "$HOME/spack"
+        git clone --depth 1 --branch v${{ inputs.spack }} \
+            https://github.com/spack/spack.git "$HOME/spack"
         . "$HOME/spack/share/spack/setup-env.sh"
         # A fresh clone has no package repo yet -- `spack location` is what
         # fetches spack-packages -- but once it exists it's an ordinary git

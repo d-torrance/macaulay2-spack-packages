@@ -17,17 +17,30 @@ jobs:
   # Every job below must concretize to the same dependency hashes or the build
   # cache is useless, so resolve the moving develop branch to one commit here
   # and have everyone check out exactly that.
+  #
+  # Every job must also run the same spack, the latest release -- what users
+  # actually run.  They all push to one build cache, and a newer spack can
+  # write spec files an older one can't read, which breaks every
+  # `buildcache update-index` until they're removed.  The Linux images are
+  # tagged by release, so pinning the tag here pins both platforms.
   pin:
-    name: Pin spack-packages
+    name: Pin spack and spack-packages
     runs-on: ubuntu-latest
     outputs:
       builtin: ${{ steps.pin.outputs.sha }}
+      spack: ${{ steps.pin.outputs.spack }}
     steps:
       - id: pin
         run: |
           sha=$(git ls-remote https://github.com/spack/spack-packages develop | cut -f1)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "spack-packages develop is $sha" >> "$GITHUB_STEP_SUMMARY"
+          # Release tags only: no -rc or other prereleases.
+          spack=$(git ls-remote --tags --refs https://github.com/spack/spack 'v*' |
+              sed 's|.*refs/tags/v||' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
+              sort -V | tail -1)
+          echo "spack=$spack" >> "$GITHUB_OUTPUT"
+          echo "spack is $spack" >> "$GITHUB_STEP_SUMMARY"
 
   # Build Macaulay2's dependencies once per distribution and push them to the
   # build cache, so the two jobs below share them.  The cache persists between
@@ -38,7 +51,7 @@ jobs:
     needs: pin
     runs-on: ${{ matrix.platform.runner }}
     container:
-      image: spack/${{ matrix.platform.distribution }}
+      image: spack/${{ matrix.platform.distribution }}:${{ needs.pin.outputs.spack }}
     permissions:
       packages: write
     env:
@@ -126,7 +139,7 @@ jobs:
     if: ${{ !cancelled() && needs.pin.result == 'success' }}
     runs-on: ${{ matrix.platform.runner }}
     container:
-      image: spack/${{ matrix.platform.distribution }}
+      image: spack/${{ matrix.platform.distribution }}:${{ needs.pin.outputs.spack }}
     permissions:
       packages: read
     env:
@@ -241,6 +254,7 @@ jobs:
 
       - uses: ./.github/actions/setup-spack-macos
         with:
+          spack: ${{ needs.pin.outputs.spack }}
           builtin: ${{ needs.pin.outputs.builtin }}
           mirror: ${{ env.MIRROR }}
 
@@ -295,6 +309,7 @@ jobs:
 
       - uses: ./.github/actions/setup-spack-macos
         with:
+          spack: ${{ needs.pin.outputs.spack }}
           builtin: ${{ needs.pin.outputs.builtin }}
           mirror: ${{ env.MIRROR }}
 
