@@ -1,0 +1,34 @@
+diff --git a/M2/configure.ac b/M2/configure.ac
+index 2ba2d229a7..89a60db98e 100644
+--- a/M2/configure.ac
++++ b/M2/configure.ac
+@@ -382,6 +382,20 @@ BREW_ADD_FLAGS
+ 
+ export PKG_CONFIG_PATH
+ 
++dnl Find the Fortran runtime libraries before anything is added to LIBS.
++dnl AC_FC_LIBRARY_LDFLAGS and AC_F77_LIBRARY_LDFLAGS link a test program and
++dnl scrape -L and -l options out of the compiler's verbose output.  If LIBS
++dnl names libraries the probe can't find -- as happens under compiler wrappers
++dnl that add their search paths to every link except a verbose one, like
++dnl spack's -- then the linker's error messages get scraped too, and on newer
++dnl binutils those leave entries like "-lgmp:" in FCLIBS and FLIBS.  The F77
++dnl versions are for AX_BLAS and AX_LAPACK, which would otherwise run them
++dnl later via AC_REQUIRE.
++AC_PROG_FC
++AC_FC_LIBRARY_LDFLAGS
++AC_PROG_F77
++AC_F77_LIBRARY_LDFLAGS
++
+ AC_CHECK_HEADERS(sys/ioctl.h termios.h sys/mman.h sys/socket.h netdb.h netinet/in.h arpa/inet.h sys/time.h time.h sys/wait.h sys/resource.h io.h linux/personality.h stddef.h elf.h execinfo.h syscall.h math.h pthread.h assert.h alloca.h malloc.h dlfcn.h)
+ AC_CHECK_HEADERS(winsock2.h) dnl used with ws2_32.dll under mingw64
+ dnl winsock2.h should be included before including windows.h
+@@ -826,8 +840,6 @@ else if test $SHARED = no -a $TRY_STATIC = yes
+      fi
+ fi
+ 
+-AC_PROG_FC
+-AC_FC_LIBRARY_LDFLAGS
+ AS_IF([test $BUILD_lapack = no],
+     [AX_BLAS
+      AX_LAPACK
