@@ -60,19 +60,35 @@ class Macaulay2(BuiltinMacaulay2):
     # direct dependencies.
     depends_on("llvm-openmp", when="%apple-clang")
 
-    with when("@develop"):
-        # a git checkout has no generated M2/configure
-        depends_on("autoconf", type="build")
-        depends_on("automake", type="build")
-        depends_on("libtool", type="build")
+    # Not yet upstream.  Run M2's Fortran library probes before anything is
+    # added to LIBS.  The probe links with -v, which spack's compiler wrapper
+    # passes through without its search paths, so with LIBS already full the
+    # link fails and autoconf scrapes the linker's errors into FLIBS (M2 issue
+    # #4074).  Builtin works around that by hard-coding FLIBS and FCLIBS to
+    # "-lgfortran -lm" instead, which only links where the C compiler is the
+    # gcc that provides gfortran: apple-clang can't find libgfortran.
+    patch("fortran-probe-1.26.06.patch", when="@1.26.06")
+    patch("fortran-probe-develop.patch", when="@develop")
+
+    # Both a git checkout, which has no generated M2/configure, and the patch
+    # above need configure regenerated.  For 1.26.06 that also drops builtin's
+    # allow-older-gfan.patch from configure, which only matters for gfan
+    # older than the 0.8beta required above.
+    depends_on("autoconf", type="build")
+    depends_on("automake", type="build")
+    depends_on("libtool", type="build")
 
     def autoreconf(self, spec, prefix):
-        if spec.satisfies("@develop"):
-            with working_dir(join_path(self.stage.source_path, "M2")):
-                Executable("./autogen.sh")()
+        with working_dir(join_path(self.stage.source_path, "M2")):
+            Executable("./autogen.sh")()
 
     def configure_args(self):
-        args = super().configure_args()
+        # Let the patched probes find the Fortran libraries themselves.
+        args = [
+            arg
+            for arg in super().configure_args()
+            if not arg.startswith(("FLIBS=", "FCLIBS="))
+        ]
         if self.spec.satisfies("@develop"):
             # builtin passes --enable-documentation=download, which fetches
             # Macaulay2-docs-$(PACKAGE_VERSION).tar.gz.  That tarball is only
