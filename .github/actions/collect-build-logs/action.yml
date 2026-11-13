@@ -1,9 +1,9 @@
 name: Collect build logs
 description: >
-  Copy spack's per-package build logs out of the stage directory and upload
-  them as an artifact.  Meant to be called from a step guarded by
-  `if: failure()`, when the logs are the only record of what went wrong --
-  spack discards the stage directory on success.
+  Copy spack's per-package build logs, and any config.log, out of the stage
+  directory and upload them as an artifact.  Meant to be called from a step
+  guarded by `if: failure()`, when the logs are the only record of what went
+  wrong -- spack discards the stage directory on success.
 
 inputs:
   name:
@@ -23,10 +23,19 @@ runs:
       run: |
         . "${{ inputs.setup-env }}"
         mkdir -p build-logs
+        stages=$(spack location -S)
         # One package's logs would collide with another's -- they're all called
         # spack-build-out.txt -- so prefix each with the stage it came from.
-        find "$(spack location -S)" -name 'spack-build-*.txt' | while read -r log
+        find "$stages" -name 'spack-build-*.txt' | while read -r log
         do cp "$log" "build-logs/$(basename $(dirname "$log"))-$(basename "$log")"
+        done
+        # config.log is where configure records why a test failed -- the
+        # compiler or linker errors, or what a test program printed when it
+        # wouldn't run -- and spack's own logs only show the verdict.  These sit
+        # deeper (spack-src/M2/config.log, plus any bundled libraries'), so name
+        # each after its whole path under the stage root.
+        find "$stages" -name config.log | while read -r log
+        do cp "$log" "build-logs/$(echo "${log#"$stages"/}" | tr / _)"
         done
 
     - uses: actions/upload-artifact@v4
