@@ -12,6 +12,13 @@ concurrency:
 
 env:
   MIRROR: oci://ghcr.io/${{ github.repository_owner }}/macaulay2-spack-cache
+  # Packages that tune themselves to the CPU they're built on, whatever
+  # spack's target says: ntl's NATIVE=on adds -march=native, and msolve's
+  # AX_EXT asks CPUID and adds -mavx512f and friends.  That's right for
+  # spack, but GitHub's x86 runners mix CPUs with and without AVX-512, and
+  # one of these built on an AVX-512 runner dies with "Illegal instruction"
+  # on the rest.  Built without AVX-512, it runs on both.
+  CPU_TUNED: ntl msolve
 
 jobs:
   # Every job below must concretize to the same dependency hashes or the build
@@ -111,15 +118,26 @@ jobs:
           spack install --verbose flex
 
       - name: Push to build cache
-        # push walks each spec's build dependencies as well, but once the cache
-        # is warm those were never installed here -- their dependents came down
-        # as binaries instead of being built -- and pushing a spec that isn't
-        # installed is an error.  Everything that *is* installed is named
-        # explicitly below, so the walk has nothing to add.
+        # Everything installed is named explicitly, and --only package keeps
+        # push from walking dependencies on top of that: once the cache is
+        # warm, build dependencies were never installed here -- their
+        # dependents came down as binaries -- and pushing a spec that isn't
+        # installed is an error.  The walk would also push the CPU-tuned
+        # packages left out below, since other packages link to them.
+        #
+        # On an AVX-512 runner, leave those out.  A later run on a runner
+        # without AVX-512 pushes them instead, and once cached they stay.
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          spack buildcache push --unsigned --without-build-dependencies cache \
-              $(spack find --format '/{hash}')
+          skip=" "
+          if grep -qw avx512f /proc/cpuinfo
+          then
+            echo "::notice title=CPU-tuned packages not cached::AVX-512 runner, so not pushing $CPU_TUNED"
+            skip=" $CPU_TUNED "
+          fi
+          spack buildcache push --unsigned --only package cache \
+              $(spack find --format '{name} /{hash}' |
+                awk -v skip="$skip" 'index(skip, " " $1 " ") == 0 { print $2 }')
           spack buildcache update-index cache
 
       - name: Collect build logs
@@ -210,7 +228,7 @@ jobs:
             echo ":white_check_mark: **$label** -- all dependencies came from the build cache." \
                 >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning title=Build cache miss::$label: dependencies were not all in the build cache and are being rebuilt from source. The deps job and this job concretized differently -- check the spack-packages pin and the target pin."
+            echo "::warning title=Build cache miss::$label: dependencies were not all in the build cache and are being rebuilt from source. Either one of $CPU_TUNED isn't cached yet, because the deps job ran on an AVX-512 runner, or the deps job and this job concretized differently -- check the spack-packages pin and the target pin."
             echo ":warning: **$label** -- build cache miss, rebuilding dependencies from source." \
                 >> "$GITHUB_STEP_SUMMARY"
             spack install --verbose --only dependencies ${{ matrix.spec }}
