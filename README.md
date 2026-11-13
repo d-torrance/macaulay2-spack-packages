@@ -87,9 +87,12 @@ that subclass the builtin ones and add what CI needs ahead of upstream: a
 `develop` version of `macaulay2`, which builtin has no reason to carry, plus
 fixes still under review upstream: a `gfan` that builds on macOS
 ([spack-packages#6090]), an `intel-tbb` and a `which` that do too
-([spack-packages#7645], [spack-packages#7646]), and a `macaulay2` that links
-against a TBB-enabled `mathicgb` ([spack-packages#7643]).  Each is meant to be deleted the moment upstream can
-do without it; once they're all gone this repo will contain nothing but CI.
+([spack-packages#7645], [spack-packages#7646]), a `frobby` whose shared
+library macOS can load (until frobby's next release), and a `macaulay2` that
+links against a TBB-enabled `mathicgb` ([spack-packages#7643]) and carries
+several macOS fixes not yet upstream.  Each is meant to be deleted the moment
+upstream can do without it; once they're all gone this repo will contain
+nothing but CI.
 
 [spack-packages#6090]: https://github.com/spack/spack-packages/pull/6090
 [spack-packages#7643]: https://github.com/spack/spack-packages/pull/7643

@@ -1,0 +1,23 @@
+--- a/Makefile
++++ b/Makefile
+@@ -153,9 +153,11 @@
+ RANLIB = ranlib
+ 
+ internalNameFlag=-soname
++internalNamePrefix=
+ OS=$(shell uname -s)
+ ifeq ($(OS), Darwin)
+   internalNameFlag=-install_name
++  internalNamePrefix=@rpath/
+ endif
+ 
+ # ***** Compilation
+@@ -240,7 +242,7 @@
+ bin/$(library): $(objs) | bin/
+ 	rm -f bin/$(library)
+ ifeq ($(MODE), shared)
+-	$(CXX) -shared -Wl,$(internalNameFlag),$(library).$(FROBBY_SOVERSION) \
++	$(CXX) -shared -Wl,$(internalNameFlag),$(internalNamePrefix)$(library).$(FROBBY_SOVERSION) \
+ 	-o bin/$(library).$(FROBBY_VERSION) $(ldflags) \
+ 	  $(patsubst $(outdir)main.o,,$(objs)) -lgmp -lgmpxx
+ else
