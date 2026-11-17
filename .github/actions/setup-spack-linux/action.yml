@@ -32,9 +32,11 @@ runs:
   using: composite
   steps:
     # What spack's own images install, less what only spack's maintainers
-    # need (mercurial, subversion, boto3, ...).  The image has no git yet when
-    # actions/checkout runs, so the workspace comes down as a tarball rather
-    # than a clone -- nothing here needs its history.
+    # need (mercurial, subversion, boto3, ...), plus Python's headers: spack
+    # builds its clingo solver from source when its bootstrap cache has none
+    # for the system Python, as for Fedora 45's 3.15.  The image has no git
+    # yet when actions/checkout runs, so the workspace comes down as a tarball
+    # rather than a clone -- nothing here needs its history.
     - name: Install spack's prerequisites
       shell: bash
       run: |
@@ -46,12 +48,12 @@ runs:
           apt-get -yqq update
           apt-get -yqq install --no-install-recommends \
               bzip2 ca-certificates curl file g++ gcc gfortran git make patch \
-              python3 unzip xz-utils zstd $clang
+              python3 python3-dev unzip xz-utils zstd $clang
         else
           [ "${{ inputs.compiler }}" = clang ] && clang="clang libomp-devel"
           dnf install -y \
               bzip2 diffutils file findutils gcc gcc-c++ gcc-gfortran git gzip \
-              hostname make patch python3 tar unzip xz zstd $clang
+              hostname make patch python3 python3-devel tar unzip xz zstd $clang
         fi
 
     - name: Install spack
