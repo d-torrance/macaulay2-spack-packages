@@ -1,0 +1,93 @@
+name: Set up spack on Linux
+description: >
+  Install spack's prerequisites and spack itself into a stock distribution
+  image, pin spack-packages, and configure the build cache.  spack publishes
+  images of its own, but only for distributions that are years old by now,
+  and this is all they did anyway -- most users install spack by cloning it
+  onto whatever system they already have, which is what this does.  The deps
+  job and the build jobs must reach exactly the same configuration or they
+  concretize differently and the build cache is useless, which is why this
+  is a shared action rather than two copies of the same steps.
+
+inputs:
+  spack:
+    description: spack release to install, from the pin job.
+    required: true
+  builtin:
+    description: spack-packages commit to check out, from the pin job.
+    required: true
+  mirror:
+    description: OCI build cache URL.
+    required: true
+  target:
+    description: spack target to pin every package to.
+    required: true
+  compiler:
+    description: >
+      gcc, or clang to build C and C++ with the distribution's clang instead.
+      Fortran comes from gfortran either way.
+    default: gcc
+
+runs:
+  using: composite
+  steps:
+    # What spack's own images install, less what only spack's maintainers
+    # need (mercurial, subversion, boto3, ...).  The image has no git yet when
+    # actions/checkout runs, so the workspace comes down as a tarball rather
+    # than a clone -- nothing here needs its history.
+    - name: Install spack's prerequisites
+      shell: bash
+      run: |
+        clang=
+        if command -v apt-get > /dev/null
+        then
+          [ "${{ inputs.compiler }}" = clang ] && clang="clang libomp-dev"
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get -yqq update
+          apt-get -yqq install --no-install-recommends \
+              bzip2 ca-certificates curl file g++ gcc gfortran git make patch \
+              python3 unzip xz-utils zstd $clang
+        else
+          [ "${{ inputs.compiler }}" = clang ] && clang="clang libomp-devel"
+          dnf install -y \
+              bzip2 diffutils file findutils gcc gcc-c++ gcc-gfortran git gzip \
+              hostname make patch python3 tar unzip xz zstd $clang
+        fi
+
+    - name: Install spack
+      shell: bash
+      run: |
+        git clone --depth 1 --branch v${{ inputs.spack }} \
+            https://github.com/spack/spack.git /opt/spack
+        . /opt/spack/share/spack/setup-env.sh
+        # TODO: drop the builtin checkout once macaulay2 and its dependencies
+        # appear in a tagged spack-packages release; then we'd be testing what
+        # an ordinary user actually gets.
+        #
+        # A fresh clone has no package repo yet -- `spack location` is what
+        # fetches spack-packages -- but once it exists it's an ordinary git
+        # checkout with an `origin`.
+        cd "$(spack location --repo builtin)"
+        git fetch --depth 1 origin ${{ inputs.builtin }}
+        git checkout ${{ inputs.builtin }}
+        cd "$GITHUB_WORKSPACE"
+        # Unlike on macOS, no `spack external find`: spack builds everything
+        # but the compiler, so the system's other packages don't matter.
+        spack compiler find
+        # Both tiers and both specs need the overlay: it changes the release's
+        # dependency graph too (gfan), not just develop's.
+        spack repo add spack_repo/macaulay2_ci
+        spack mirror add --unsigned \
+            --oci-username-variable GHCR_USER \
+            --oci-password-variable GHCR_TOKEN cache "${{ inputs.mirror }}"
+        # GitHub's runners are a mix of Intel and AMD, and spack would
+        # otherwise concretize target= to whatever CPU it landed on -- so the
+        # deps job and the build jobs could disagree and silently miss the
+        # cache.
+        spack config add "packages:all:target:[${{ inputs.target }}]"
+        if [ "${{ inputs.compiler }}" = clang ]
+        then
+          spack config add "packages:c:require:[llvm]"
+          spack config add "packages:cxx:require:[llvm]"
+          spack config add "packages:fortran:require:[gcc]"
+        fi

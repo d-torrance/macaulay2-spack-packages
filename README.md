@@ -58,8 +58,9 @@ Rather than duplicating that documentation here, we recommend consulting the Spa
 
 It exists to make sure the spack *builds* keep working.  Every Tuesday (and on
 demand), [the workflow](.github/workflows/build.yml) installs Macaulay2 from
-scratch on AlmaLinux 8 and 9, Ubuntu Jammy and Noble, and Fedora 40 — spanning
-gcc 8 through 14 — plus Ubuntu Noble on `aarch64` and macOS on Apple silicon.
+scratch on AlmaLinux 8, 9 and 10, Ubuntu 22.04, 24.04 and 26.04, and Fedora 45
+— spanning gcc 8 through 16 — plus Fedora 45 with clang, Ubuntu 24.04 on
+`aarch64`, and macOS on Apple silicon.
 It then runs [`smoke-test.m2`](smoke-test.m2) to check that the resulting
 Macaulay2 can actually find and run the external programs spack installed with
 it.  The development build also generates the documentation, which runs every
@@ -68,11 +69,12 @@ or in Macaulay2, not in this repo.
 
 Macaulay2's dependencies are built once per platform and shared with the
 release and development builds through a build cache on `ghcr.io`, so a run
-only rebuilds what actually changed.  macOS has a dependency tier of its own
-rather than joining the Linux one, since there's no spack container image for
-it and everything from the compiler on up has to be assembled by hand.  Every
-job, on both platforms, runs the latest spack release — what users run — with
-`spack-packages` pinned to one `develop` commit.
+only rebuilds what actually changed.  The Linux jobs run in each
+distribution's stock container image, not spack's, and install spack into it
+the way most users do: by cloning it.  macOS has a dependency tier of its own,
+since it can't run in those containers.  Every job, on both platforms, runs the
+latest spack release — what users run — with `spack-packages` pinned to one
+`develop` commit.
 
 That build cache is CI scaffolding, not a place to get binaries.  It is
 unsigned, it holds only Macaulay2's dependencies and not Macaulay2 itself, and

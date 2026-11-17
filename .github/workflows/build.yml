@@ -28,8 +28,8 @@ jobs:
   # Every job must also run the same spack, the latest release -- what users
   # actually run.  They all push to one build cache, and a newer spack can
   # write spec files an older one can't read, which breaks every
-  # `buildcache update-index` until they're removed.  The Linux images are
-  # tagged by release, so pinning the tag here pins both platforms.
+  # `buildcache update-index` until they're removed.  Every job clones this
+  # release itself, on both platforms.
   pin:
     name: Pin spack and spack-packages
     runs-on: ubuntu-latest
@@ -54,11 +54,11 @@ jobs:
   # runs, so a later run only rebuilds what actually changed -- and a
   # dependency getting rebuilt is itself a signal worth noticing.
   deps:
-    name: deps / ${{ matrix.platform.distribution }} ${{ matrix.platform.target }}
+    name: deps / ${{ matrix.platform.name }} ${{ matrix.platform.target }}
     needs: pin
     runs-on: ${{ matrix.platform.runner }}
     container:
-      image: spack/${{ matrix.platform.distribution }}:${{ needs.pin.outputs.spack }}
+      image: ${{ matrix.platform.image }}
     permissions:
       packages: write
     env:
@@ -68,37 +68,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Stock distribution images, spanning gcc 8 through 16: AlmaLinux 8, 9
+        # and 10 have gcc 8, 11 and 14, Ubuntu 22.04, 24.04 and 26.04 have 11,
+        # 13 and 15, and Fedora 45 has 16.  Fedora is pinned rather than
+        # :latest so that a new release shows up as a change here, not as a
+        # mysterious rebuild of every dependency.
         platform:
-          - {distribution: almalinux8,   runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: almalinux9,   runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: ubuntu-jammy, runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: ubuntu-noble, runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: fedora40,     runner: ubuntu-latest,    target: x86_64_v3}
-          # Same distribution and compiler as the x86_64 noble entry above, so
+          - {name: almalinux8,     image: "almalinux:8",  runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: almalinux9,     image: "almalinux:9",  runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: almalinux10,    image: "almalinux:10", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu22.04,    image: "ubuntu:22.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu24.04,    image: "ubuntu:24.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu26.04,    image: "ubuntu:26.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: fedora45,       image: "fedora:45",    runner: ubuntu-latest,    target: x86_64_v3}
+          # clang for C and C++, gfortran for Fortran -- the Linux counterpart
+          # of macOS's apple-clang/gfortran mix, but against libstdc++ rather
+          # than libc++.
+          - {name: fedora45-clang, image: "fedora:45",    runner: ubuntu-latest,    target: x86_64_v3, compiler: clang}
+          # Same distribution and compiler as the x86_64 24.04 entry above, so
           # that a failure here points at the architecture and nothing else.
-          - {distribution: ubuntu-noble, runner: ubuntu-24.04-arm, target: aarch64}
+          - {name: ubuntu24.04,    image: "ubuntu:24.04", runner: ubuntu-24.04-arm, target: aarch64}
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up spack
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          # TODO: drop the builtin checkout once macaulay2 and its dependencies
-          # appear in a tagged spack-packages release; then we'd be testing what
-          # an ordinary user actually gets.
-          cd "$(spack location --repo builtin)"
-          git fetch --depth 1 origin ${{ needs.pin.outputs.builtin }}
-          git checkout ${{ needs.pin.outputs.builtin }}
-          cd "$GITHUB_WORKSPACE"
-          spack repo add spack_repo/macaulay2_ci
-          spack mirror add --unsigned \
-              --oci-username-variable GHCR_USER \
-              --oci-password-variable GHCR_TOKEN cache "$MIRROR"
-          # GitHub's runners are a mix of Intel and AMD, and spack would
-          # otherwise concretize target= to whatever CPU it landed on -- so the
-          # deps job and the build jobs could disagree and silently miss the
-          # cache.  Both tiers must set this to the same thing.
-          spack config add "packages:all:target:[${{ matrix.platform.target }}]"
+      - uses: ./.github/actions/setup-spack-linux
+        with:
+          spack: ${{ needs.pin.outputs.spack }}
+          builtin: ${{ needs.pin.outputs.builtin }}
+          mirror: ${{ env.MIRROR }}
+          target: ${{ matrix.platform.target }}
+          compiler: ${{ matrix.platform.compiler || 'gcc' }}
 
       - name: Install dependencies
         # macaulay2@develop's dependencies are a superset of the release's: it
@@ -144,10 +143,10 @@ jobs:
         if: failure()
         uses: ./.github/actions/collect-build-logs
         with:
-          name: build-logs-deps-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}
+          name: build-logs-deps-${{ matrix.platform.name }}-${{ matrix.platform.target }}
 
   macaulay2:
-    name: ${{ matrix.platform.distribution }} ${{ matrix.platform.target }} / ${{ matrix.spec }}
+    name: ${{ matrix.platform.name }} ${{ matrix.platform.target }} / ${{ matrix.spec }}
     needs: [pin, deps]
     # A matrix job counts as failed if any single leg fails, so without this one
     # distribution's dependency build going wrong would skip every build below
@@ -157,7 +156,7 @@ jobs:
     if: ${{ !cancelled() && needs.pin.result == 'success' }}
     runs-on: ${{ matrix.platform.runner }}
     container:
-      image: spack/${{ matrix.platform.distribution }}:${{ needs.pin.outputs.spack }}
+      image: ${{ matrix.platform.image }}
     permissions:
       packages: read
     env:
@@ -167,15 +166,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The same platforms as the deps job, entry for entry.
         platform:
-          - {distribution: almalinux8,   runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: almalinux9,   runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: ubuntu-jammy, runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: ubuntu-noble, runner: ubuntu-latest,    target: x86_64_v3}
-          - {distribution: fedora40,     runner: ubuntu-latest,    target: x86_64_v3}
-          # Same distribution and compiler as the x86_64 noble entry above, so
+          - {name: almalinux8,     image: "almalinux:8",  runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: almalinux9,     image: "almalinux:9",  runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: almalinux10,    image: "almalinux:10", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu22.04,    image: "ubuntu:22.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu24.04,    image: "ubuntu:24.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: ubuntu26.04,    image: "ubuntu:26.04", runner: ubuntu-latest,    target: x86_64_v3}
+          - {name: fedora45,       image: "fedora:45",    runner: ubuntu-latest,    target: x86_64_v3}
+          # clang for C and C++, gfortran for Fortran -- the Linux counterpart
+          # of macOS's apple-clang/gfortran mix, but against libstdc++ rather
+          # than libc++.
+          - {name: fedora45-clang, image: "fedora:45",    runner: ubuntu-latest,    target: x86_64_v3, compiler: clang}
+          # Same distribution and compiler as the x86_64 24.04 entry above, so
           # that a failure here points at the architecture and nothing else.
-          - {distribution: ubuntu-noble, runner: ubuntu-24.04-arm, target: aarch64}
+          - {name: ubuntu24.04,    image: "ubuntu:24.04", runner: ubuntu-24.04-arm, target: aarch64}
         spec:
           # The release build takes builtin's --enable-documentation=download,
           # so it generates no examples; the development build has no docs to
@@ -186,32 +192,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up spack
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          cd "$(spack location --repo builtin)"
-          git fetch --depth 1 origin ${{ needs.pin.outputs.builtin }}
-          git checkout ${{ needs.pin.outputs.builtin }}
-          cd "$GITHUB_WORKSPACE"
-          spack mirror add --unsigned \
-              --oci-username-variable GHCR_USER \
-              --oci-password-variable GHCR_TOKEN cache "$MIRROR"
-          # GitHub's runners are a mix of Intel and AMD, and spack would
-          # otherwise concretize target= to whatever CPU it landed on -- so the
-          # deps job and the build jobs could disagree and silently miss the
-          # cache.  Both tiers must set this to the same thing.
-          spack config add "packages:all:target:[${{ matrix.platform.target }}]"
-
-      # Unconditional, and it has to stay that way: the deps job always adds
-      # this repo, so anything it changes about the dependency graph -- right
-      # now, gfan -- has to be visible here too or the two tiers concretize
-      # differently and every dependency gets rebuilt from source.  It's the
-      # release spec that needs saying: the overlay's only *version* is
-      # develop, so it used to look like release builds had no use for it.
-      - name: Add overlay repo
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          spack repo add spack_repo/macaulay2_ci
+      - uses: ./.github/actions/setup-spack-linux
+        with:
+          spack: ${{ needs.pin.outputs.spack }}
+          builtin: ${{ needs.pin.outputs.builtin }}
+          mirror: ${{ env.MIRROR }}
+          target: ${{ matrix.platform.target }}
+          compiler: ${{ matrix.platform.compiler || 'gcc' }}
 
       # Dependencies should all come from the cache the deps job pushed.  Try
       # that first and say so loudly if it didn't work: the failure is
@@ -221,7 +208,7 @@ jobs:
         id: cache
         run: |
           . /opt/spack/share/spack/setup-env.sh
-          label="${{ matrix.platform.distribution }} ${{ matrix.platform.target }} / ${{ matrix.spec }}"
+          label="${{ matrix.platform.name }} ${{ matrix.platform.target }} / ${{ matrix.spec }}"
           if spack install --only dependencies --use-buildcache dependencies:only ${{ matrix.spec }}
           then
             echo ":white_check_mark: **$label** -- all dependencies came from the build cache." \
@@ -250,10 +237,10 @@ jobs:
         if: failure()
         uses: ./.github/actions/collect-build-logs
         with:
-          name: build-logs-${{ matrix.platform.distribution }}-${{ matrix.platform.target }}-${{ matrix.spec }}
+          name: build-logs-${{ matrix.platform.name }}-${{ matrix.platform.target }}-${{ matrix.spec }}
 
-  # macOS can't join the deps matrix above -- there is no spack container image
-  # for it -- so it gets a dependency tier of its own.  Same bargain as on
+  # macOS can't join the deps matrix above -- those jobs run in Linux
+  # containers -- so it gets a dependency tier of its own.  Same bargain as on
   # Linux: build the dependencies once, push them, and let the two spec jobs
   # below pull binaries instead of spending hours rebuilding them twice.
   deps-macos:
