@@ -1,17 +1,16 @@
 name: Set up spack on macOS
 description: >
-  Install spack, pin spack-packages, and configure the build cache.  There is
-  no spack container image for macOS, so unlike the Linux jobs -- which inherit
-  an identical starting point from the image -- the macOS jobs have to build
-  one.  Both of them must reach exactly the same one or they concretize
-  differently and the build cache is useless, which is why this is a shared
-  action rather than two copies of the same steps.
+  Install spack, pin spack-packages, and configure the build cache.  The
+  macOS counterpart of setup-spack-linux: both macOS jobs must reach exactly
+  the same configuration or they concretize differently and the build cache
+  is useless, which is why this is a shared action rather than two copies of
+  the same steps.
 
 inputs:
   spack:
     description: >
       spack release to install, from the pin job -- the same one the Linux
-      images are tagged with.
+      jobs install.
     required: true
   builtin:
     description: spack-packages commit to check out, from the pin job.
