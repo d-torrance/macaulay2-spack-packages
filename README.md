@@ -88,8 +88,10 @@ branch.  The package recipes left here, in [`spack_repo/macaulay2_ci`](spack_rep
 that subclass the builtin ones and add what CI needs ahead of upstream: a
 `develop` version of `macaulay2`, which builtin has no reason to carry, plus
 fixes still under review upstream: a `gfan` that builds on macOS
-([spack-packages#6090]) and a `macaulay2` that carries several macOS fixes
+([spack-packages#6090]), an `lrslib` that builds with gcc 15 and later
+([spack-packages#7758]), and a `macaulay2` that carries several macOS fixes
 not yet upstream.  Each is meant to be deleted the moment upstream can do
 without it; once they're all gone this repo will contain nothing but CI.
 
 [spack-packages#6090]: https://github.com/spack/spack-packages/pull/6090
+[spack-packages#7758]: https://github.com/spack/spack-packages/pull/7758
