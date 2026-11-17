@@ -41,12 +41,6 @@ class Macaulay2(BuiltinMacaulay2):
     # concretize gfan differently and miss the build cache.
     depends_on("gfan@0.8beta:", type=("build", "run"), when="@1.26.06:")
 
-    # Vendored from spack-packages#7643; delete once it merges.  M2 always
-    # builds with TBB, and its e/m2tbb.hpp includes mathicgb's mtbb.hpp with
-    # TBB on, so a mathicgb built without it defines the same mtbb classes
-    # differently on the other side of the link.
-    depends_on("mathicgb+tbb")
-
     # Not yet upstream.  M2's configure rejects GNU make 3.81 and requires GNU
     # tar.  macOS ships make 3.81 and bsdtar, and `spack external find`
     # registers that make as gmake, so without a version spack uses it.
