@@ -54,15 +54,15 @@ class Macaulay2(BuiltinMacaulay2):
     # direct dependencies.
     depends_on("llvm-openmp", when="%apple-clang")
 
-    # Not yet upstream.  Run M2's Fortran library probes before anything is
-    # added to LIBS.  The probe links with -v, which spack's compiler wrapper
-    # passes through without its search paths, so with LIBS already full the
-    # link fails and autoconf scrapes the linker's errors into FLIBS (M2 issue
-    # #4074).  Builtin works around that by hard-coding FLIBS and FCLIBS to
-    # "-lgfortran -lm" instead, which only links where the C compiler is the
-    # gcc that provides gfortran: apple-clang can't find libgfortran.
+    # Upstream after 1.26.06 (M2 commit d511211037).  Run M2's Fortran library
+    # probes before anything is added to LIBS.  The probe links with -v, which
+    # spack's compiler wrapper passes through without its search paths, so
+    # with LIBS already full the link fails and autoconf scrapes the linker's
+    # errors into FLIBS (M2 issue #4074).  Builtin works around that by
+    # hard-coding FLIBS and FCLIBS to "-lgfortran -lm" instead, which only
+    # links where the C compiler is the gcc that provides gfortran: apple-clang
+    # can't find libgfortran.
     patch("fortran-probe-1.26.06.patch", when="@1.26.06")
-    patch("fortran-probe-develop.patch", when="@develop")
 
     # Both a git checkout, which has no generated M2/configure, and the patch
     # above need configure regenerated.  For 1.26.06 that also drops builtin's
@@ -77,7 +77,7 @@ class Macaulay2(BuiltinMacaulay2):
             Executable("./autogen.sh")()
 
     def configure_args(self):
-        # Let the patched probes find the Fortran libraries themselves.
+        # Let the probes find the Fortran libraries themselves.
         args = [
             arg
             for arg in super().configure_args()
